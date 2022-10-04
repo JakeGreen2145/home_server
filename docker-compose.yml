@@ -1,113 +1,294 @@
 version: "3.4"
 services:
-  vpn:
-    container_name: vpn
-    image: dperson/openvpn-client:latest
-    cap_add:
-      - net_admin # required to modify network interfaces
-    restart: unless-stopped
-    volumes:
-      - /dev/net:/dev/net:z # tun device
-      - ${ROOT}/config/vpn:/vpn # OpenVPN configuration
-    security_opt:
-      - label:disable
-    ports:
-      - 8112:8112 # port for deluge web UI to be reachable from local network
-    command: '-f "" -r 192.168.1.0/24' # enable firewall and route local network traffic
-
-  deluge:
-    container_name: deluge
-    image: linuxserver/deluge:latest
-    restart: unless-stopped
-    network_mode: service:vpn # run on the vpn network
-    environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
-    volumes:
-      - ${ROOT}/downloads:/downloads # downloads folder
-      - ${ROOT}/config/deluge:/config # config files
-
   jackett:
     container_name: jackett
     image: linuxserver/jackett:latest
     restart: unless-stopped
-    network_mode: host
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ} # timezone, defined in .env
     volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/downloads/torrent-blackhole:/downloads # place where to put .torrent files for manual download
-      - ${ROOT}/config/jackett:/config # config files
+      - ${ROOT}/Plexbox/Downloads/torrent-blackhole:/downloads # place where to put .torrent files for manual download
+      - ${ROOT}/Configs/Jackett:/config # config files
+    networks:
+      - container_net
+    ports:
+      - "9117:9117"
+    hostname: "jackett"
+
+  flaresolverr:
+    image: flaresolverr/flaresolverr
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+    networks:
+      - container_net
+    ports:
+      - 8191:8191
+    restart: unless-stopped
 
   nzbget:
     container_name: nzbget
     image: linuxserver/nzbget:latest
     restart: unless-stopped
-    network_mode: host
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ} # timezone, defined in .env
     volumes:
-      - ${ROOT}/downloads:/downloads # download folder
-      - ${ROOT}/config/nzbget:/config # config files
+      - ${ROOT}/Plexbox/Downloads:/downloads # download folder
+      - ${ROOT}/Configs/Nzbget:/config # config files
+    networks:
+      - container_net
+    ports:
+      - "6789:6789"
+    hostname: "nzbget"
 
   sonarr:
     container_name: sonarr
     image: linuxserver/sonarr:latest
     restart: unless-stopped
-    network_mode: host
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ} # timezone, defined in .env
     volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/config/sonarr:/config # config files
-      - ${ROOT}/complete/tv:/tv # tv shows folder
-      - ${ROOT}/downloads:/downloads # download folder
+      - ${ROOT}/Configs/Sonarr:/config # config files
+      - ${ROOT}/Plexbox:/data
+    networks:
+      - container_net
+    ports:
+      - "7979:8989"
+    hostname: "sonarr"
 
   radarr:
     container_name: radarr
     image: linuxserver/radarr:latest
     restart: unless-stopped
-    network_mode: host
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ} # timezone, defined in .env
     volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/config/radarr:/config # config files
-      - ${ROOT}/complete/movies:/movies # movies folder
-      - ${ROOT}/downloads:/downloads # download folder
+      - ${ROOT}/Configs/Radarr:/config # config files
+      - ${ROOT}/Plexbox:/data
+    networks:
+      - container_net
+    ports:
+      - "3421:7878"
+    hostname: "radarr"
 
-  plex-server:
-    container_name: plex-server
-    image: plexinc/pms-docker:latest
-    restart: unless-stopped
-    environment:
-      - TZ=${TZ} # timezone, defined in .env
-    network_mode: host
-    volumes:
-      - ${ROOT}/config/plex/db:/config # plex database
-      - ${ROOT}/config/plex/transcode:/transcode # temp transcoded files
-      - ${ROOT}/complete:/data # media library
+# I recommend against using the container below. Instead, 
+# use the native plex desktop software to
+# enable hardware transcoding and local network streaming
+  # plex-server:
+  #   container_name: plex-server
+  #   image: linuxserver/plex:latest
+  #   restart: unless-stopped
+  #   environment:
+  #     - VERSION=docker
+  #     - TZ=${TZ} # timezone, defined in .env
+  #   volumes:
+  #     - ${ROOT}/Configs/Plex/db:/config # plex database
+  #     - ${ROOT}/Configs/Plex/transcode:/transcode # temp transcoded files
+  #     - ${ROOT}/TV:/tv #tv shows library
+  #     - ${ROOT}/Movies:/movies # Movies library
+  #   networks:
+  #     - container_net
+  #   ports:
+  #     - "32400:32400"
+  #   hostname: "plex-server"
 
   bazarr:
     container_name: bazarr
     image: linuxserver/bazarr
     restart: unless-stopped
-    network_mode: host
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ} # timezone, defined in .env
       - UMASK_SET=022 #optional
     volumes:
-      - ${ROOT}/config/bazarr:/config # config files
-      - ${ROOT}/complete/movies:/movies # movies folder
-      - ${ROOT}/complete/tv:/tv # tv shows folder
+      - ${ROOT}/Configs/Bazarr:/config # config files
+      - ${ROOT}/Plexbox/Movies:/movies # movies folder
+      - ${ROOT}/Plexbox/TV:/tv # tv shows folder
+    networks:
+      - container_net
+    ports:
+      - "6767:6767"
+    hostname: "bazarr"
+
+  rdtclient:
+    image: rogerfar/rdtclient
+    container_name: rdtclient
+    volumes:
+      - ${ROOT}/Plexbox/Downloads:/data/downloads
+      - ${ROOT}/Configs/rdt-client:/data/db
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    networks:
+      - container_net
+    ports:
+        - "6500:6500"
+    hostname: "rdtclient"
+    restart: unless-stopped
+    logging:
+        driver: json-file
+        options:
+            max-size: 10m
+
+  organizr:
+    container_name: organizr
+    image: organizr/organizr
+    restart: unless-stopped
+    volumes:
+      - ${ROOT}/Configs/Organizr:/config
+    networks:
+      - container_net
+    ports:
+        - "90:80"
+    hostname: "organizr"
+    environment:
+      - fpm=true #true or false | using true will provide better performance
+      - branch=v2-master #v2-master or #v2-develop
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+  # Used to update cloudflare when public ip changes
+  cloudflare-ddns:
+    container_name: cloudflare-ddns
+    image: oznu/cloudflare-ddns
+    restart: always
+    environment:
+      - API_KEY=eE12oCteHLBV2P5SdaUX3nTG-IL_UQWryHVp3wbQ
+      - ZONE=turbodiesel.space
+      - PROXIED=true
+
+  # Gets automatically updated SSL certs for use in nginx reverse proxy
+  swag:
+    image: lscr.io/linuxserver/swag
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - URL=${DOMAIN}
+      - SUBDOMAINS=wildcard
+      - VALIDATION=dns
+      - DNSPLUGIN=cloudflare
+    volumes:
+      - ${ROOT}/Configs/Swag:/config
+    networks:
+      - container_net
+    ports:
+      - 344:443
+      - 808:80 #optional
+    hostname: swag
+    restart: unless-stopped
+
+  nextcloud:
+    image: nextcloud
+    container_name: nextcloud
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - MYSQL_PASSWORD=${PSSWD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=mariadb
+    volumes:
+      - nextcloud:/var/www/html
+    links:
+      - database:mariadb
+    ports:
+      - 8080:80
+    networks:
+      - container_net
+    hostname: nextcloud
+    restart: always
+
+  database:
+    image: mariadb
+    container_name: mariadb
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    volumes:
+      - database:/var/lib/mysql
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - MYSQL_ROOT_PASSWORD=${ROOT_PSSWD} # used for root user
+      - MYSQL_USER=nextcloud # Username for nextcloud
+      - MYSQL_PASSWORD=${PSSWD} # Password for nextcloud user
+      - MYSQL_DATABASE=nextcloud # name of database
+    networks:
+      - container_net
+    hostname: mariadb
+
+volumes:
+  database:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${ROOT}/Configs/MariaDB
+  nextcloud:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${ROOT}/Configs/Nextcloud
+
+networks:
+  container_net:
+
+# TODO
+  # ldap-auth:
+  #   image: lscr.io/linuxserver/ldap-auth
+  #   container_name: ldap-auth
+  #   environment:
+  #     - TZ=${TZ}
+  #     - CERTFILE= /keystore/fullchain.pem
+  #     - KEYFILE= /keystore/privkey.pem
+  #   volumes:
+  #     - ${ROOT}/Configs/Swag/keys/letsencrypt:/keystore
+  #   networks:
+  #     - container_net
+  #   ports:
+  #     - 8888:8888
+  #     - 9000:9000
+  #   restart: unless-stopped
+
+# TODO
+  # authelia:
+  #   image: authelia/authelia
+  #   container_name: authelia
+  #   volumes:
+  #     - ${ROOT}/Configs/Authelia:/config
+  #   networks:
+  #     - container_net
+  #   environment:
+  #     - PUID=${PUID}
+  #     - PGID=${PGID}
+  #     - TZ=${TZ}
+  #   expose:
+  #     - 9091
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     disable: true
+  #   environment:
+  #     - TZ=Australia/Melbourne
+
+# TODO: add Prometheus and Grafana for metrics and monitoring
+# TODO: add Ombi for managing plex requests
+# TODO: add code-server for self hosted web based IDE
+
