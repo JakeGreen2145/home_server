@@ -80,6 +80,22 @@ services:
       - "3421:7878"
     hostname: "radarr"
 
+  ombi:
+    image: lscr.io/linuxserver/ombi:latest
+    container_name: ombi
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - ${ROOT}/Configs/Ombi:/config
+    networks:
+      - container_net
+    ports:
+      - 3579:3579
+    hostname: "ombi"
+    restart: unless-stopped
+
 # I recommend against using the container below. Instead, 
 # use the native plex desktop software to
 # enable hardware transcoding and local network streaming
@@ -141,6 +157,7 @@ services:
         options:
             max-size: 10m
 
+  # TODO: fix this
   organizr:
     container_name: organizr
     image: organizr/organizr
@@ -169,7 +186,7 @@ services:
       - ZONE=turbodiesel.space
       - PROXIED=true
 
-  # Gets automatically updated SSL certs for use in nginx reverse proxy
+  # Web server and reverse proxy with automatic SSL cert renewal
   swag:
     image: lscr.io/linuxserver/swag
     container_name: swag
@@ -233,6 +250,22 @@ services:
     networks:
       - container_net
     hostname: mariadb
+
+  # Smart home server. Not on the same network as the other services
+  homeassistant:
+    image: lscr.io/linuxserver/homeassistant:latest
+    container_name: homeassistant
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/Configs/HomeAssistant:/config
+    ports:
+      - 8123:8123
+    networks:
+      - container_net
+    restart: unless-stopped
 
 volumes:
   database:
