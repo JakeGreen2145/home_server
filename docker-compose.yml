@@ -18,7 +18,7 @@ services:
     hostname: "jackett"
 
   flaresolverr:
-    image: flaresolverr/flaresolverr
+    image: flaresolverr/flaresolverr:latest
     container_name: flaresolverr
     environment:
       - LOG_LEVEL=info
@@ -80,6 +80,24 @@ services:
       - "3421:7878"
     hostname: "radarr"
 
+  lazylibrarian:
+    image: lscr.io/linuxserver/lazylibrarian:latest
+    container_name: lazylibrarian
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+      - DOCKER_MODS=linuxserver/mods:universal-calibre|linuxserver/mods:lazylibrarian-ffmpeg #optional
+    volumes:
+      - ${ROOT}/Configs/lazylibrarian:/config
+      - ${ROOT}/Plexbox/Downloads:/downloads
+      - ${ROOT}/Plexbox/Books:/books #optional
+    networks:
+      - container_net
+    ports:
+      - 5299:5299
+    restart: unless-stopped
+
   ombi:
     image: lscr.io/linuxserver/ombi:latest
     container_name: ombi
@@ -96,30 +114,9 @@ services:
     hostname: "ombi"
     restart: unless-stopped
 
-# I recommend against using the container below. Instead, 
-# use the native plex desktop software to
-# enable hardware transcoding and local network streaming
-  # plex-server:
-  #   container_name: plex-server
-  #   image: linuxserver/plex:latest
-  #   restart: unless-stopped
-  #   environment:
-  #     - VERSION=docker
-  #     - TZ=${TZ} # timezone, defined in .env
-  #   volumes:
-  #     - ${ROOT}/Configs/Plex/db:/config # plex database
-  #     - ${ROOT}/Configs/Plex/transcode:/transcode # temp transcoded files
-  #     - ${ROOT}/TV:/tv #tv shows library
-  #     - ${ROOT}/Movies:/movies # Movies library
-  #   networks:
-  #     - container_net
-  #   ports:
-  #     - "32400:32400"
-  #   hostname: "plex-server"
-
   bazarr:
     container_name: bazarr
-    image: linuxserver/bazarr
+    image: linuxserver/bazarr:latest
     restart: unless-stopped
     environment:
       - PUID=${PUID} # default user id, defined in .env
@@ -137,7 +134,7 @@ services:
     hostname: "bazarr"
 
   rdtclient:
-    image: rogerfar/rdtclient
+    image: rogerfar/rdtclient:latest
     container_name: rdtclient
     volumes:
       - ${ROOT}/Plexbox/Downloads:/data/downloads
@@ -157,29 +154,56 @@ services:
         options:
             max-size: 10m
 
-  # TODO: fix this
-  organizr:
-    container_name: organizr
-    image: organizr/organizr
-    restart: unless-stopped
+  # a dedicated download service and frontend for configuration
+  aria2:
+    image: hurlenko/aria2-ariang
+    container_name: aria2
     volumes:
-      - ${ROOT}/Configs/Organizr:/config
+      - ${ROOT}/Plexbox:/aria2/data
+      - ${ROOT}/Plexbox/Downloads:/data/downloads
+      - ${ROOT}/Configs/aria2-conf:/aria2/conf
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - ARIA2RPCPORT=443 # the port used for remote procedure calls for starting/stopping downloads detailed decription from docs follows
+      # The port that will be used for rpc calls to aria2. Usually you want to set it to the port your website is running on. For example if 
+      # your AriaNg instance is accessible on https://ariang.mysite.com you need to set ARIA2RPCPORT to 443 (default https port), otherwise 
+      # AriaNg won't be able to access aria2 rpc running on the default port 8080. You can set the port in the web ui by going to AriaNg 
+      # Settings > Rpc tab > Aria2 RPC Address field, and changing the default rpc port to whatever you need, but this has to be done per browser.
+      - EMBED_RPC_SECRET=true # embeds the rpc secret into the webui. Not secure, so requires the auth to be configured below
+      - BASIC_AUTH_USERNAME=${ARIA2_USERNAME}
+      - BASIC_AUTH_PASSWORD=${ARIA2_PSSWD}
     networks:
       - container_net
     ports:
-        - "90:80"
-    hostname: "organizr"
+      - 443:8080 # the port used for the webUI
+    hostname: "aria2"
+    restart: always
+
+  deluge:
+    image: lscr.io/linuxserver/deluge:latest
+    container_name: deluge
     environment:
-      - fpm=true #true or false | using true will provide better performance
-      - branch=v2-master #v2-master or #v2-develop
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+      - DELUGE_LOGLEVEL=error #optional
+    volumes:
+      - ${ROOT}/Configs/Deluge:/config
+      - ${ROOT}/Plexbox/Downloads:/downloads
+    networks:
+      - container_net
+    ports:
+      - 8112:8112 # webui
+      - 6881:6881 # inbound torrent traffic
+      - 6881:6881/udp # inbound torrent traffic
+      - 58846:58846 # Default deluged port for thin client connectivity
+    restart: unless-stopped
 
   # Used to update cloudflare when public ip changes
   cloudflare-ddns:
     container_name: cloudflare-ddns
-    image: oznu/cloudflare-ddns
+    image: oznu/cloudflare-ddns:latest
     restart: always
     environment:
       - API_KEY=eE12oCteHLBV2P5SdaUX3nTG-IL_UQWryHVp3wbQ
@@ -188,7 +212,7 @@ services:
 
   # Web server and reverse proxy with automatic SSL cert renewal
   swag:
-    image: lscr.io/linuxserver/swag
+    image: lscr.io/linuxserver/swag:latest
     container_name: swag
     cap_add:
       - NET_ADMIN
@@ -211,18 +235,20 @@ services:
     restart: unless-stopped
 
   nextcloud:
-    image: nextcloud
+    image: nextcloud:latest
     container_name: nextcloud
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - MYSQL_PASSWORD=${PSSWD}
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-      - MYSQL_HOST=mariadb
+      - MYSQL_PASSWORD=${PSSWD} # database password
+      - MYSQL_DATABASE=nextcloud # database name
+      - MYSQL_USER=nextcloud # database username
+      - MYSQL_HOST=mariadb # Hostname of the database
     volumes:
       - nextcloud:/var/www/html
+      # TODO: copy the data according to https://help.nextcloud.com/t/howto-change-move-data-directory-after-installation/17170
+      - nextcloud_contents:/data_clone
     links:
       - database:mariadb
     ports:
@@ -233,7 +259,7 @@ services:
     restart: always
 
   database:
-    image: mariadb
+    image: mariadb:latest
     container_name: mariadb
     restart: always
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
@@ -251,22 +277,6 @@ services:
       - container_net
     hostname: mariadb
 
-  # Smart home server. Not on the same network as the other services
-  homeassistant:
-    image: lscr.io/linuxserver/homeassistant:latest
-    container_name: homeassistant
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-    volumes:
-      - ${ROOT}/Configs/HomeAssistant:/config
-    ports:
-      - 8123:8123
-    networks:
-      - container_net
-    restart: unless-stopped
-
 volumes:
   database:
     driver: local
@@ -280,6 +290,12 @@ volumes:
       type: none
       o: bind
       device: ${ROOT}/Configs/Nextcloud
+  nextcloud_contents:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${ROOT}/NextCloud
 
 networks:
   container_net:
@@ -322,6 +338,5 @@ networks:
   #     - TZ=Australia/Melbourne
 
 # TODO: add Prometheus and Grafana for metrics and monitoring
-# TODO: add Ombi for managing plex requests
 # TODO: add code-server for self hosted web based IDE
 
