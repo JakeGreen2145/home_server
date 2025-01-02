@@ -5,18 +5,19 @@ services:
     image: linuxserver/jackett:latest
     restart: unless-stopped
     environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
-      - ${ROOT}/Plexbox/Downloads/torrent-blackhole:/downloads # place where to put .torrent files for manual download
-      - ${ROOT}/Configs/Jackett:/config # config files
+      - ${MEDIA_DOWNLOADS}/torrent-blackhole:/downloads
+      - ${CONTAINER_CONFIGS}/jackett:/config
     networks:
       - container_net
     ports:
       - "9117:9117"
     hostname: "jackett"
 
+  # Workaround to bypass cloudflare blocking jackett requests
   flaresolverr:
     image: flaresolverr/flaresolverr:latest
     container_name: flaresolverr
@@ -29,34 +30,17 @@ services:
       - 8191:8191
     restart: unless-stopped
 
-  nzbget:
-    container_name: nzbget
-    image: linuxserver/nzbget:latest
-    restart: unless-stopped
-    environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
-    volumes:
-      - ${ROOT}/Plexbox/Downloads:/downloads # download folder
-      - ${ROOT}/Configs/Nzbget:/config # config files
-    networks:
-      - container_net
-    ports:
-      - "6789:6789"
-    hostname: "nzbget"
-
   sonarr:
     container_name: sonarr
     image: linuxserver/sonarr:latest
     restart: unless-stopped
     environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
-      - ${ROOT}/Configs/Sonarr:/config # config files
-      - ${ROOT}/Plexbox:/data
+      - ${CONTAINER_CONFIGS}/sonarr:/config
+      - ${MEDIA}:/data
     networks:
       - container_net
     ports:
@@ -68,12 +52,12 @@ services:
     image: linuxserver/radarr:latest
     restart: unless-stopped
     environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
-      - ${ROOT}/Configs/Radarr:/config # config files
-      - ${ROOT}/Plexbox:/data
+      - ${CONTAINER_CONFIGS}/radarr:/config
+      - ${MEDIA}:/data
     networks:
       - container_net
     ports:
@@ -84,29 +68,30 @@ services:
     image: lscr.io/linuxserver/lazylibrarian:latest
     container_name: lazylibrarian
     environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
-      - DOCKER_MODS=linuxserver/mods:universal-calibre|linuxserver/mods:lazylibrarian-ffmpeg #optional
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DOCKER_MODS=linuxserver/mods:universal-calibre|linuxserver/mods:lazylibrarian-ffmpeg
     volumes:
-      - ${ROOT}/Configs/lazylibrarian:/config
-      - ${ROOT}/Plexbox/Downloads:/downloads
-      - ${ROOT}/Plexbox/Books:/books #optional
+      - ${CONTAINER_CONFIGS}/lazylibrarian:/config
+      - ${MEDIA_DOWNLOADS}/lazylibrarian:/downloads
+      - ${MEDIA}/Books:/books
     networks:
       - container_net
     ports:
       - 5299:5299
     restart: unless-stopped
 
+  # Requests Manager
   ombi:
     image: lscr.io/linuxserver/ombi:latest
     container_name: ombi
     environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
-      - ${ROOT}/Configs/Ombi:/config
+      - ${CONTAINER_CONFIGS}/ombi:/config
     networks:
       - container_net
     ports:
@@ -114,19 +99,20 @@ services:
     hostname: "ombi"
     restart: unless-stopped
 
+  # Subtitle downloader
   bazarr:
     container_name: bazarr
     image: linuxserver/bazarr:latest
     restart: unless-stopped
     environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
-      - UMASK_SET=022 #optional
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK_SET=022
     volumes:
-      - ${ROOT}/Configs/Bazarr:/config # config files
-      - ${ROOT}/Plexbox/Movies:/movies # movies folder
-      - ${ROOT}/Plexbox/TV:/tv # tv shows folder
+      - ${CONTAINER_CONFIGS}/bazarr:/config
+      - ${MEDIA_MOVIES}:/movies
+      - ${MEDIA_TV}:/tv
     networks:
       - container_net
     ports:
@@ -137,12 +123,12 @@ services:
     image: rogerfar/rdtclient:latest
     container_name: rdtclient
     volumes:
-      - ${ROOT}/Plexbox/Downloads:/data/downloads
-      - ${ROOT}/Configs/rdt-client:/data/db
+      - ${MEDIA_DOWNLOADS}/rdtclient:/data/downloads
+      - ${CONTAINER_CONFIGS}/rdtclient:/data/db
     environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     networks:
       - container_net
     ports:
@@ -154,21 +140,21 @@ services:
         options:
             max-size: 10m
 
-  # a dedicated download service and frontend for configuration
+  # Download manager
   aria2:
     image: hurlenko/aria2-ariang
     container_name: aria2
     volumes:
-      - ${ROOT}/Plexbox:/aria2/data
-      - ${ROOT}/Plexbox/Downloads:/data/downloads
-      - ${ROOT}/Configs/aria2-conf:/aria2/conf
+      - ${MEDIA}:/aria2/data
+      - ${MEDIA_DOWNLOADS}/aria2:/data/downloads
+      - ${CONTAINER_CONFIGS}/aria2:/aria2/conf
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - ARIA2RPCPORT=443 # the port used for remote procedure calls for starting/stopping downloads detailed decription from docs follows
-      # The port that will be used for rpc calls to aria2. Usually you want to set it to the port your website is running on. For example if 
-      # your AriaNg instance is accessible on https://ariang.mysite.com you need to set ARIA2RPCPORT to 443 (default https port), otherwise 
-      # AriaNg won't be able to access aria2 rpc running on the default port 8080. You can set the port in the web ui by going to AriaNg 
+      # The port that will be used for rpc calls to aria2. Usually you want to set it to the port your website is running on. For example if
+      # your AriaNg instance is accessible on https://ariang.mysite.com you need to set ARIA2RPCPORT to 443 (default https port), otherwise
+      # AriaNg won't be able to access aria2 rpc running on the default port 8080. You can set the port in the web ui by going to AriaNg
       # Settings > Rpc tab > Aria2 RPC Address field, and changing the default rpc port to whatever you need, but this has to be done per browser.
       - EMBED_RPC_SECRET=true # embeds the rpc secret into the webui. Not secure, so requires the auth to be configured below
       - BASIC_AUTH_USERNAME=${ARIA2_USERNAME}
@@ -180,17 +166,18 @@ services:
     hostname: "aria2"
     restart: always
 
+  # Torrent Client
   deluge:
     image: lscr.io/linuxserver/deluge:latest
     container_name: deluge
     environment:
-      - PUID=${PUID} # default user id, defined in .env
-      - PGID=${PGID} # default group id, defined in .env
-      - TZ=${TZ} # timezone, defined in .env
-      - DELUGE_LOGLEVEL=error #optional
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DELUGE_LOGLEVEL=error
     volumes:
-      - ${ROOT}/Configs/Deluge:/config
-      - ${ROOT}/Plexbox/Downloads:/downloads
+      - ${CONTAINER_CONFIGS}/deluge:/config
+      - ${MEDIA_DOWNLOADS}:/downloads
     networks:
       - container_net
     ports:
@@ -225,15 +212,49 @@ services:
       - VALIDATION=dns
       - DNSPLUGIN=cloudflare
     volumes:
-      - ${ROOT}/Configs/Swag:/config
+      - ${CONTAINER_CONFIGS}/swag:/config
     networks:
       - container_net
     ports:
       - 344:443
-      - 808:80 #optional
+      - 808:80
     hostname: swag
     restart: unless-stopped
 
+  # Update manager. Pulls latest container images
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_REVIVE_STOPPED=true
+      - WATCHTOWER_POLL_INTERVAL=3600
+    networks:
+      - container_net
+
+  # VS Code Server
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code-server
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - PASSWORD=${CODE_WEB_PASSWORD}
+      - SUDO_PASSWORD=${CODE_SUDO_PASSWORD}
+      # - PROXY_DOMAIN=code-server.my.domain #optional
+      - DEFAULT_WORKSPACE=${DOCUMENTS}
+    volumes:
+      - ${CONTAINER_CONFIGS}/codeserver:/config
+    ports:
+      - 8443:8443
+    restart: unless-stopped
+
+  # TODO: Fix the storage volume so that files are directly accessible
   nextcloud:
     image: nextcloud:latest
     container_name: nextcloud
@@ -283,19 +304,19 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${ROOT}/Configs/MariaDB
+      device: ${CONTAINER_CONFIGS}/mariadb
   nextcloud:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${ROOT}/Configs/Nextcloud
+      device: ${CONTAINER_CONFIGS}/nextcloud
   nextcloud_contents:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${ROOT}/NextCloud
+      device: ${NEXTCLOUD_DATA}
 
 networks:
   container_net:
@@ -309,7 +330,7 @@ networks:
   #     - CERTFILE= /keystore/fullchain.pem
   #     - KEYFILE= /keystore/privkey.pem
   #   volumes:
-  #     - ${ROOT}/Configs/Swag/keys/letsencrypt:/keystore
+  #     - ${CONTAINER_CONFIGS}/Swag/keys/letsencrypt:/keystore
   #   networks:
   #     - container_net
   #   ports:
@@ -322,7 +343,7 @@ networks:
   #   image: authelia/authelia
   #   container_name: authelia
   #   volumes:
-  #     - ${ROOT}/Configs/Authelia:/config
+  #     - ${CONTAINER_CONFIGS}/Authelia:/config
   #   networks:
   #     - container_net
   #   environment:
@@ -338,5 +359,3 @@ networks:
   #     - TZ=Australia/Melbourne
 
 # TODO: add Prometheus and Grafana for metrics and monitoring
-# TODO: add code-server for self hosted web based IDE
-
